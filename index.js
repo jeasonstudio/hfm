@@ -3,6 +3,7 @@ var once = require('once')
 var split = require('split')
 var through = require('through')
 var net = require('net')
+var fetch = require('node-fetch')
 
 var WINDOWS = process.platform === 'win32'
 var EOL = WINDOWS
@@ -177,4 +178,40 @@ exports.writeFile = function (lines, cb) {
     })
     s.end()
   })
+}
+
+/**
+ * Test if a str is url.
+ * @param {String} str the str you want to test
+ */
+exports.isURL = function (str) {
+  return !!str.match(/(((^https?:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w]*))?)$/g);
+}
+
+/**
+ * 获根据 url 获取 lines
+ * @param {string} url 
+ * @returns {string[][]}
+ */
+exports.getOriginFile = async function (url) {
+  var lines = []
+  var text = await fetch(url)
+    .then(r => r.text())
+  text.split(/\r?\n/).forEach((line) => {
+    // Remove all comment text from the line
+    var lineSansComments = line.replace(/#.*/, '')
+    var matches = /^\s*?(.+?)\s+(.+?)\s*$/.exec(lineSansComments)
+    if (matches && matches.length === 3) {
+      // Found a hosts entry
+      var ip = matches[1]
+      var host = matches[2]
+      lines.push([ip, host])
+    } else {
+      // Found a comment, blank line, or something else
+      if (false) {
+        lines.push(line)
+      }
+    }
+  })
+  return lines
 }

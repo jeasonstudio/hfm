@@ -4,6 +4,7 @@ var chalk = require('chalk')
 var hostile = require('../')
 var minimist = require('minimist')
 var net = require('net')
+var fetch = require('node-fetch')
 
 var argv = minimist(process.argv.slice(2))
 
@@ -105,12 +106,12 @@ function remove (host) {
  * @param {string} filePath
  */
 function load (filePath) {
-  var lines = parseFile(filePath)
-
-  lines.forEach(function (item) {
-    set(item[0], item[1])
+  parseFile(filePath).then(lines => {
+    lines.forEach(function (item) {
+      set(item[0], item[1])
+    })
+    console.log(chalk.green('Added %d hosts!'), lines.length)
   })
-  console.log(chalk.green('\nAdded %d hosts!'), lines.length)
 }
 
 /**
@@ -118,22 +119,26 @@ function load (filePath) {
  * @param {string} filePath
  */
 function unload (filePath) {
-  var lines = parseFile(filePath)
-
-  lines.forEach(function (item) {
-    remove(item[1])
+  parseFile(filePath).then(lines => {
+    lines.forEach(function (item) {
+      remove(item[1])
+    })
+    console.log(chalk.green('Removed %d hosts!'), lines.length)
   })
-  console.log(chalk.green('Removed %d hosts!'), lines.length)
 }
 
 /**
  * Get all the lines of the file as array of arrays [[IP, host]]
  * @param {string} filePath
  */
-function parseFile (filePath) {
+async function parseFile (filePath) {
   var lines
   try {
-    lines = hostile.getFile(filePath, false)
+    if (hostile.isURL(filePath)) {
+      lines = await hostile.getOriginFile(filePath)
+    } else {
+      lines = hostile.getFile(filePath, false)
+    }
   } catch (err) {
     return error(err)
   }
