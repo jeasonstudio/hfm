@@ -6,7 +6,7 @@
     "name": "Jeason",
     "email": "me@jeasonstudio.cn"
   },
-  "bin": "bin/cmd.js",
+  "bin": "bin/cli.js",
   "bugs": {
     "url": "https://github.com/jeasonstudio/hfm/issues"
   },

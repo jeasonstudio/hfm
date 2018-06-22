@@ -29,6 +29,7 @@ const HFM_CONFIG = {
 /**
  * Test if a str is url.
  * @param {String} str the str you want to test
+ * @returns {boolean}
  */
 function isUrl(str) {
   return !!str.match(/(((^https?:(?:\/\/)?)(?:[-;:&=+$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=+$,\w]+@)[A-Za-z0-9.-]+)((?:\/[+~%/.\w-_]*)?\??(?:[-+=&;%@.\w_]*)#?(?:[\w]*))?)$/g);
@@ -62,13 +63,24 @@ function fileDecoder(str) {
  * Get a list of the lines that make up the filePath. If the
  * `preserveFormatting` parameter is true, then include comments, blank lines
  * and other non-host entries in the result.
- * @param {string} filePath
+ * @param {string} filePath localPath or URL
  * @returns {(string|string[])[]}
  *
  */
 function getFile(filePath) {
   if (!fs.existsSync(filePath)) throw new Error(`No found that file: ${filePath}`);
   return fileDecoder(fs.readFileSync(filePath, 'utf8'));
+}
+
+/**
+ * get hosts lines by url
+ *
+ * @param {string} url
+ * @returns {string[][]}
+ */
+async function getOriginFile(url) {
+  const originHostText = await fetch(url).then(r => r.text());
+  return fileDecoder(originHostText);
 }
 
 function writeHostFile(lines) {
@@ -88,6 +100,9 @@ function writeRcFile(rc) {
   fs.writeFileSync(HFMRC_PATH, yaml.safeDump(rc, { sortKeys: true }), 'utf8');
 }
 
+/**
+ * get the `~/.hfmrc` file parse to json
+ */
 function getRc() {
   if (!fs.existsSync(HFMRC_PATH)) {
     writeRcFile(HFM_CONFIG);
@@ -100,73 +115,56 @@ function getRc() {
   };
 }
 
-
 /**
  * Add a rule to /etc/hosts. If the rule already exists, then this does nothing.
  *
- * @param {string} ip
- * @param {string} domain
+ * @param {string[][]} ipDomainList
+ * @param {function} cb callback before
  * @returns {(string|string[])[]}
  */
-function setHostRecord(ip, domain) {
-  let didUpdate = false;
-  const lines = getFile(HOSTS_PATH)
-    .map((line) => {
-      // replace a line if both hostname and ip version of the address matches
-      if (
-        Array.isArray(line)
-        && line[1] === domain
-        && net.isIP(line[0]) === net.isIP(ip)
-      ) {
-        // eslint-disable-next-line no-param-reassign
-        line[0] = ip;
-        didUpdate = true;
-      }
-      return line;
-    });
-  if (!didUpdate) {
-    // If the last line is empty, or just whitespace, then insert the new entry
-    // right before it
-    const lastLine = lines[lines.length - 1];
-    if (typeof lastLine === 'string' && /\s*/.test(lastLine)) {
-      lines.splice(lines.length - 1, 0, [ip, domain]);
-    } else {
-      lines.push([ip, domain]);
-    }
-  }
-  return writeHostFile(lines);
-}
+function setHostRecord(ipDomainList, cb) {
+  const lines = getFile(HOSTS_PATH);
+  ipDomainList.forEach((item) => {
+    if (typeof item === 'string') return;
+    const [ip, domain] = item;
+    const hasRecordIndex = lines
+      .map(l => (Array.isArray(l) ? l[1] : null)).indexOf(domain);
 
-function removeHost(ip, domain) {
-  const lines = getFile(HOSTS_PATH)
-    .filter(line => !(Array.isArray(line) && line[0] === ip && line[1] === domain));
+    if (typeof cb === 'function') cb(ip, domain);
+    // replace a line if both hostname and ip version of the address matches
+    if (hasRecordIndex >= 0 && net.isIP(lines[hasRecordIndex][0]) === net.isIP(ip)) {
+      lines[hasRecordIndex][0] = ip;
+    } else {
+      // If the last line is empty, or just whitespace, then insert the new entry
+      // right before it
+      const lastLine = lines[lines.length - 1];
+      if (typeof lastLine === 'string' && /\s*/.test(lastLine)) {
+        lines.splice(lines.length - 1, 0, [ip, domain]);
+      } else {
+        lines.push([ip, domain]);
+      }
+    }
+  });
   return writeHostFile(lines);
 }
 
 /**
- * 获根据 url 获取 lines
- * @param {string} url
- * @returns {string[][]}
+ * Remove a rule to /etc/hosts.
+ *
+ * @param {(string|string[])[]} ipDomainList
+ * @param {function} cb callback before
+ * @returns {(string|string[])[]}
  */
-async function getOriginFile(url) {
-  const lines = [];
-  const text = await fetch(url)
-    .then(r => r.text());
-  text.split(/\r?\n/).forEach((line) => {
-    // Remove all comment text from the line
-    const lineSansComments = line.replace(/#.*/, '');
-    const matches = /^\s*?(.+?)\s+(.+?)\s*$/.exec(lineSansComments);
-    if (matches && matches.length === 3) {
-      // Found a hosts entry
-      const ip = matches[1];
-      const host = matches[2];
-      lines.push([ip, host]);
-    } else if (line.startsWith('#')) {
-    // Found a comment, blank line, or something else
-      lines.push(line);
-    }
-  });
-  return lines;
+function removeHost(ipDomainList, cb) {
+  // eslint-disable-next-line no-param-reassign
+  ipDomainList = ipDomainList.filter(i => Array.isArray(i));
+  const lines = getFile(HOSTS_PATH)
+    .filter((line) => {
+      const needRemoveIndex = ipDomainList.findIndex(([, d]) => (d === line[1]));
+      if (typeof cb === 'function' && needRemoveIndex >= 0) cb(...line);
+      return needRemoveIndex < 0;
+    });
+  return writeHostFile(lines);
 }
 
 /**
@@ -226,21 +224,11 @@ exports.set = function (ip, domains) {
     console.error('Invalid IP address');
     return;
   }
-  domains.forEach(domain => setHostRecord(ip, domain) && console.log(chalk.green(`Added ${domain}`)));
+  setHostRecord(domains.map(d => ([ip, d])), (_, domain) => console.log(chalk.green(`Added ${domain}`)));
 };
 
 exports.remove = function (domains) {
-  getFile(HOSTS_PATH)
-    .forEach((hostLine) => {
-      if (
-        Array.isArray(hostLine)
-        && (domains.includes(hostLine[1]) || domains.includes(hostLine[0]))
-      ) {
-        if (removeHost(hostLine[0], hostLine[1])) {
-          console.log(chalk.green(`Removed ${hostLine[1]}`));
-        }
-      }
-    });
+  removeHost(domains.map(d => ([null, d])), (_, domain) => console.log(chalk.green(`Removed ${domain}`)));
 };
 
 exports.search = function (domain) {
@@ -263,10 +251,9 @@ exports.use = function (alias) {
   // eslint-disable-next-line no-param-reassign
   alias = getRc().list[alias] ? getRc().list[alias].url : alias;
   parseFile(alias).then((lines) => {
-    lines.forEach((item) => {
-      setHostRecord(...item);
-    });
-    console.log(chalk.green('Added %d hosts!'), lines.length);
+    let re = 0;
+    setHostRecord(lines, () => { re += 1; });
+    console.log(chalk.green('Added %d hosts!'), re);
   });
 };
 
@@ -274,9 +261,8 @@ exports.unuse = function (alias) {
   // eslint-disable-next-line no-param-reassign
   alias = getRc().list[alias] ? getRc().list[alias].url : alias;
   parseFile(alias).then((lines) => {
-    lines.forEach((item) => {
-      removeHost(...item);
-    });
-    console.log(chalk.green('Removed %d hosts!'), lines.length);
+    let re = 0;
+    removeHost(lines, () => { re += 1; });
+    console.log(chalk.green('Removed %d hosts!'), re);
   });
 };
