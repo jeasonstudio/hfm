@@ -1,3 +1,5 @@
 .travis.yml
 img.png
 test/
+.eslintignore
+.eslintrc.yml
