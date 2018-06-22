@@ -1,18 +1,19 @@
 {
-  "name": "hostile",
-  "description": "Simple /etc/hosts manipulation",
-  "version": "1.3.2",
+  "name": "hfm",
+  "description": "Host file manager for command line.",
+  "version": "1.0.2",
   "author": {
-    "name": "Feross Aboukhadijeh",
-    "email": "feross@feross.org",
-    "url": "https://feross.org"
+    "name": "Jeason",
+    "email": "me@jeasonstudio.cn"
   },
   "bin": "bin/cmd.js",
   "bugs": {
-    "url": "https://github.com/feross/hostile/issues"
+    "url": "https://github.com/jeasonstudio/hfm/issues"
   },
   "dependencies": {
     "chalk": "^2.3.1",
+    "commander": "^2.15.1",
+    "js-yaml": "^3.12.0",
     "minimist": "^1.1.0",
     "node-fetch": "^2.1.2",
     "once": "^1.3.0",
@@ -20,10 +21,12 @@
     "through": "^2.3.4"
   },
   "devDependencies": {
+    "eslint-config-airbnb-base": "^12.1.0",
+    "eslint-plugin-import": "^2.12.0",
     "standard": "*",
     "tape": "^4.0.0"
   },
-  "homepage": "https://github.com/feross/hostile",
+  "homepage": "https://github.com/jeasonstudio/hfm",
   "keywords": [
     "/etc/hosts",
     "change hosts",
@@ -33,8 +36,8 @@
   ],
   "license": "MIT",
   "main": "index.js",
-  "repository": "git://github.com/feross/hostile",
+  "repository": "git://github.com/jeasonstudio/hfm",
   "scripts": {
-    "test": "standard && tape test/*.js"
+    "test": "tape test/*.js"
   }
 }

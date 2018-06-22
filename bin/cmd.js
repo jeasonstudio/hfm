@@ -4,7 +4,6 @@ var chalk = require('chalk')
 var hostile = require('../')
 var minimist = require('minimist')
 var net = require('net')
-var fetch = require('node-fetch')
 
 var argv = minimist(process.argv.slice(2))
 

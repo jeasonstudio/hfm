@@ -4,25 +4,23 @@ var split = require('split')
 var through = require('through')
 var net = require('net')
 var fetch = require('node-fetch')
+const path = require('path')
 
-var WINDOWS = process.platform === 'win32'
-var EOL = WINDOWS
-  ? '\r\n'
-  : '\n'
+const WINDOWS = process.platform === 'win32'
+const EOL = WINDOWS ? '\r\n' : '\n'
 
 exports.HOSTS = WINDOWS
-  ? 'C:/Windows/System32/drivers/etc/hosts'
-  : '/etc/hosts'
+  ? path.normalize('C:/Windows/System32/drivers/etc/hosts')
+  : path.normalize('/etc/hosts')
 
-  /**
-   * Get a list of the lines that make up the filePath. If the
-   * `preserveFormatting` parameter is true, then include comments, blank lines
-   * and other non-host entries in the result.
-   *
-   * @param  {boolean}   preserveFormatting
-   * @param  {function(err, lines)=} cb
-   */
-
+/**
+ * Get a list of the lines that make up the filePath. If the
+ * `preserveFormatting` parameter is true, then include comments, blank lines
+ * and other non-host entries in the result.
+ *
+ * @param  {boolean}   preserveFormatting
+ * @param  {function(err, lines)=} cb
+ */
 exports.getFile = function (filePath, preserveFormatting, cb) {
   var lines = []
   if (typeof cb !== 'function') {
