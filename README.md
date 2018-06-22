@@ -1,6 +1,6 @@
-# hostile
+<h1 align="center">HFM</h1>
 
-[![travis][travis-image]][travis-url] [![npm][npm-image]][npm-url] [![downloads][downloads-image]][downloads-url] [![javascript style guide][standard-image]][standard-url]
+[![travis][travis-image]][travis-url] [![npm][npm-image]][npm-url] [![downloads][downloads-image]][downloads-url] 
 
 [travis-image]: https://img.shields.io/travis/jeasonstudio/hfm/master.svg
 [travis-url]: https://travis-ci.org/jeasonstudio/hfm
@@ -9,24 +9,49 @@
 [downloads-image]: https://img.shields.io/npm/dm/hfm.svg
 [downloads-url]: https://npmjs.org/package/hfm
 
-#### Simple, programmatic `/etc/hosts` manipulation (in node.js)
+> Simple, programmatic `hosts` file manager. Just like `nrm`.
 
-![hostile](https://raw.github.com/feross/hostile/master/img.png)
 
-## install
+## Install
 
 ```bash
-npm install hostile
+npm install hfm -g
 ```
 
-## usage
+## Usage
 
 If you use OS X or Linux, this module assumes your hosts file is at `/etc/hosts`. On
 Windows, it assumes your hosts file is at `C:/Windows/System32/drivers/etc/hosts`.
 
-**Commands that modify the hosts file require root privileges.**
+### help
 
-#### list all host file records
+> Print help message for hfm
+
+```bash
+$ hfm
+
+  Usage: hfm [options] [command]
+
+  Options:
+
+    -V, --version         output the version number
+    -h, --help            output usage information
+
+  Commands:
+
+    list|ls               List origin or local host files alias
+    show                  Show all current domain records in hosts file
+    alias <name> <path>   Alias a(n) origin/local host file
+    del <name>            Unalias a(n) origin/local host file
+    set <ip> <domain...>  Set a domain in the hosts file
+    remove <domain...>    Remove a set of host entries from URL or local path
+    search <domain>       Search related domain records in hosts file
+    use <alias>           Use a(n) origin hosts path or an ALIAS_NAME(see `hfm ls`)
+    unuse <alias>         Unuse a(n) origin hosts path or an ALIAS_NAME(see `hfm ls`)
+    help                  Print help for hfm
+```
+
+### list all host file records
 
 ```bash
 hostile list

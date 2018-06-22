@@ -64,10 +64,10 @@ program
   .description('Unuse a(n) origin hosts path or an ALIAS_NAME(see `hfm ls`)')
   .action(core.unuse);
 
-program
-  .command('test <alias>')
-  .description('Test a(n) origin hosts path or an ALIAS_NAME(see `hfm ls`) is actived')
-  .action(core.test);
+// program
+//   .command('test <alias>')
+//   .description('Test a(n) origin hosts path or an ALIAS_NAME(see `hfm ls`) is actived')
+//   .action(core.test);
 
 program
   .command('help')
