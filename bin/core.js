@@ -2,10 +2,10 @@
 const path = require('path');
 const fs = require('fs');
 const yaml = require('js-yaml');
-// const once = require('once');
-// const split = require('split');
-// const through = require('through');
 const chalk = require('chalk');
+const net = require('net');
+const anymatch = require('anymatch');
+const fetch = require('node-fetch');
 
 const HFMRC_PATH = path.resolve(process.env.HOME, '.hfmrc');
 const WINDOWS = process.platform === 'win32';
@@ -26,6 +26,13 @@ const HFM_CONFIG = {
   custom: [],
 };
 
+/**
+ * Test if a str is url.
+ * @param {String} str the str you want to test
+ */
+function isUrl(str) {
+  return !!str.match(/(((^https?:(?:\/\/)?)(?:[-;:&=+$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=+$,\w]+@)[A-Za-z0-9.-]+)((?:\/[+~%/.\w-_]*)?\??(?:[-+=&;%@.\w_]*)#?(?:[\w]*))?)$/g);
+}
 
 function lineFormatter(line) {
   // Remove all comment text from the line
@@ -56,10 +63,25 @@ function fileDecoder(str) {
  * `preserveFormatting` parameter is true, then include comments, blank lines
  * and other non-host entries in the result.
  * @param {string} filePath
+ * @returns {(string|string[])[]}
  *
  */
 function getFile(filePath) {
+  if (!fs.existsSync(filePath)) throw new Error(`No found that file: ${filePath}`);
   return fileDecoder(fs.readFileSync(filePath, 'utf8'));
+}
+
+function writeHostFile(lines) {
+  const records = lines.map((line, lineNum) => {
+    if (Array.isArray(line)) {
+      // eslint-disable-next-line no-param-reassign
+      line = `${line[0]} ${line[1]}`;
+    }
+    return line + (lineNum === lines.length - 1 ? '' : EOL);
+  });
+  const stat = fs.statSync(HOSTS_PATH);
+  fs.writeFileSync(HOSTS_PATH, records.join(''), { mode: stat.mode });
+  return true;
 }
 
 function writeRcFile(rc) {
@@ -74,8 +96,91 @@ function getRc() {
   return {
     list: {},
     custom: [],
-    ...yaml.safeLoad(fs.readFileSync(HFMRC_PATH, 'utf8'))
+    ...yaml.safeLoad(fs.readFileSync(HFMRC_PATH, 'utf8')),
   };
+}
+
+
+/**
+ * Add a rule to /etc/hosts. If the rule already exists, then this does nothing.
+ *
+ * @param {string} ip
+ * @param {string} domain
+ * @returns {(string|string[])[]}
+ */
+function setHostRecord(ip, domain) {
+  let didUpdate = false;
+  const lines = getFile(HOSTS_PATH)
+    .map((line) => {
+      // replace a line if both hostname and ip version of the address matches
+      if (
+        Array.isArray(line)
+        && line[1] === domain
+        && net.isIP(line[0]) === net.isIP(ip)
+      ) {
+        // eslint-disable-next-line no-param-reassign
+        line[0] = ip;
+        didUpdate = true;
+      }
+      return line;
+    });
+  if (!didUpdate) {
+    // If the last line is empty, or just whitespace, then insert the new entry
+    // right before it
+    const lastLine = lines[lines.length - 1];
+    if (typeof lastLine === 'string' && /\s*/.test(lastLine)) {
+      lines.splice(lines.length - 1, 0, [ip, domain]);
+    } else {
+      lines.push([ip, domain]);
+    }
+  }
+  return writeHostFile(lines);
+}
+
+function removeHost(ip, domain) {
+  const lines = getFile(HOSTS_PATH)
+    .filter(line => !(Array.isArray(line) && line[0] === ip && line[1] === domain));
+  return writeHostFile(lines);
+}
+
+/**
+ * 获根据 url 获取 lines
+ * @param {string} url
+ * @returns {string[][]}
+ */
+async function getOriginFile(url) {
+  const lines = [];
+  const text = await fetch(url)
+    .then(r => r.text());
+  text.split(/\r?\n/).forEach((line) => {
+    // Remove all comment text from the line
+    const lineSansComments = line.replace(/#.*/, '');
+    const matches = /^\s*?(.+?)\s+(.+?)\s*$/.exec(lineSansComments);
+    if (matches && matches.length === 3) {
+      // Found a hosts entry
+      const ip = matches[1];
+      const host = matches[2];
+      lines.push([ip, host]);
+    } else if (line.startsWith('#')) {
+    // Found a comment, blank line, or something else
+      lines.push(line);
+    }
+  });
+  return lines;
+}
+
+/**
+ * Get all the lines of the file as array of arrays [[IP, host]]
+ * @param {string} filePath
+ */
+async function parseFile(filePath) {
+  let lines;
+  if (isUrl(filePath)) {
+    lines = await getOriginFile(filePath);
+  } else {
+    lines = getFile(filePath);
+  }
+  return lines;
 }
 
 exports.list = function () {
@@ -87,7 +192,6 @@ exports.list = function () {
 };
 
 exports.show = function () {
-  console.log('\n');
   getFile(HOSTS_PATH)
     .forEach((hostLine) => {
       if (Array.isArray(hostLine)) {
@@ -100,32 +204,79 @@ exports.show = function () {
 };
 
 exports.alias = function (name, url) {
-  console.log(name, url);
   const listObj = getRc().list;
   if (!listObj[name]) {
     listObj[name] = { url };
     writeRcFile({ ...getRc(), list: listObj });
+    console.log(`Set the new alias success: ${chalk.green(`${name}=>${url}`)}`);
   } else {
-    console.error('You have added alias:', name);
+    console.error(chalk.red(`This alias have been added: ${name}=>${url}`));
   }
 };
 
-exports.set = function (ip, domain) {
-  console.log(ip, domain);
+exports.del = function (name) {
+  const listObj = getRc().list;
+  delete listObj[name];
+  writeRcFile({ ...getRc(), list: listObj });
+  console.log(`Removed alias '${name}'`);
 };
 
-exports.remove = function (domain) {
-  console.log(domain);
+exports.set = function (ip, domains) {
+  if (!net.isIP(ip)) {
+    console.error('Invalid IP address');
+    return;
+  }
+  domains.forEach(domain => setHostRecord(ip, domain) && console.log(chalk.green(`Added ${domain}`)));
+};
+
+exports.remove = function (domains) {
+  getFile(HOSTS_PATH)
+    .forEach((hostLine) => {
+      if (
+        Array.isArray(hostLine)
+        && (domains.includes(hostLine[1]) || domains.includes(hostLine[0]))
+      ) {
+        if (removeHost(hostLine[0], hostLine[1])) {
+          console.log(chalk.green(`Removed ${hostLine[1]}`));
+        }
+      }
+    });
 };
 
 exports.search = function (domain) {
-  console.log(domain);
+  getFile(HOSTS_PATH)
+    .forEach((hostLine) => {
+      if (Array.isArray(hostLine)) {
+        const [ip, host] = hostLine;
+        // eslint-disable-next-line no-param-reassign
+        hostLine = `${ip} ${host}`;
+      }
+      const searchIndex = anymatch(new RegExp(domain, 'ig'), hostLine, true);
+      const normalIndex = hostLine.indexOf(domain);
+      if (searchIndex >= 0 || normalIndex >= 0) {
+        console.log(chalk.green(hostLine));
+      }
+    });
 };
 
 exports.use = function (alias) {
-  console.log(alias);
+  // eslint-disable-next-line no-param-reassign
+  alias = getRc().list[alias] ? getRc().list[alias].url : alias;
+  parseFile(alias).then((lines) => {
+    lines.forEach((item) => {
+      setHostRecord(...item);
+    });
+    console.log(chalk.green('Added %d hosts!'), lines.length);
+  });
 };
 
 exports.unuse = function (alias) {
-  console.log(alias);
+  // eslint-disable-next-line no-param-reassign
+  alias = getRc().list[alias] ? getRc().list[alias].url : alias;
+  parseFile(alias).then((lines) => {
+    lines.forEach((item) => {
+      removeHost(...item);
+    });
+    console.log(chalk.green('Removed %d hosts!'), lines.length);
+  });
 };
