@@ -28,7 +28,7 @@ Windows, it assumes your hosts file is at `C:/Windows/System32/drivers/etc/hosts
 > Print help message for hfm
 
 ```bash
-$ hfm
+$ hfm help
 
   Usage: hfm [options] [command]
 
@@ -51,161 +51,63 @@ $ hfm
     help                  Print help for hfm
 ```
 
-### list all host file records
+### list|ls
+
+> List origin or local host files alias
 
 ```bash
-hostile list
+$ ./bin/cli.js ls
+* Google        https://raw.githubusercontent.com/googlehosts/hosts/master/hosts-files/hosts
+* GoogleMirror  https://coding.net/u/scaffrey/p/hosts/git/raw/master/hosts-files/hosts
 ```
 
-#### set a domain in the hosts file
+### show
+
+> Show all current domain records in hosts file
 
 ```bash
-hostile set [ip] [host]
+$ hfm show
+# ----------------------------
+# SYSTEM
+127.0.0.1       localhost
+255.255.255.255 broadcasthost
 ```
 
-examples:
-```bash
-hostile set localhost domain.com
-hostile set 192.168.33.10 domain.com
-```
+### set [ip] [domain]
 
-#### remove a domain from the hosts file
+> Set a domain in the hosts file
 
-```bash
-hostile remove [host]
-```
+### remove [domain]
 
-example:
-```bash
-hostile remove domain.com
-```
+> Remove a set of host entries from URL or local path
 
-#### load a set of hosts from a file
+### alias [name] [path]
 
-```bash
-hostile load [file_path]
-```
-hosts.txt
-```bash
-# hosts.txt
-127.0.0.1 github.com
-127.0.0.1 twitter.com
-```
+> Alias a(n) origin/local host file  
+> `path` could be local path or URL
 
-example:
-```bash
-hostile load hosts.txt
-```
+### del [name]
 
-#### unload [remove] a set of hosts from a file
+> Unalias a(n) origin/local host file
+
+### search [domain]
+
+> Search related domain records in hosts file
 
 ```bash
-hostile unload [file_path]
+$ hfm search \.com$
+$ hfm search google.*
+$ hfm search www.google.com
 ```
+
+### use [alias]
+
+> Use a(n) origin hosts path or an ALIAS_NAME(see `hfm ls`)
 
 ```bash
-# hosts.txt
-127.0.0.1 github.com
-127.0.0.1 twitter.com
+$ hfm use Google
 ```
 
-example:
-```bash
-hostile unload hosts.txt
-```
+### unuse [alias]
 
-#### set up auto completion
-
-bash:
-```bash
-hostile --completion >> ~/hostile.completion.sh
-echo 'source ~/hostile.completion.sh' >> .bash_profile
-```
-
-zsh:
-```bash
-echo '. <(./hostile --completion)' >> .zshrc
-```
-
-## methods
-
-Commands that modify the hosts file require root privileges.
-
-I wouldn't recommend running your production node server with admin privileges unless you
-downgrade to a normal user with
-[`process.setuid(id)`](http://nodejs.org/api/process.html#process_process_setuid_id)
-before you start accepting requests.
-
-**All methods have sync versions. Just omit the callback parameter.**
-
-#### add a rule to /etc/hosts
-
-```js
-var hostile = require('hostile')
-hostile.set('127.0.0.1', 'peercdn.com', function (err) {
-  if (err) {
-    console.error(err)
-  } else {
-    console.log('set /etc/hosts successfully!')
-  }
-})
-```
-
-If the rule already exists, then this does nothing.
-
-#### remove a rule from /etc/hosts
-
-```js
-hostile.remove('127.0.0.1', 'peercdn.com', function (err) {
-  if (err) {
-    console.error(err)
-  } else {
-    console.log('set /etc/hosts successfully!')
-  }
-})
-```
-
-If the rule does not exist, then this does nothing.
-
-#### get all lines in /etc/hosts
-
-```js
-// If `preserveFormatting` is true, then include comments, blank lines and other
-// non-host entries in the result
-var preserveFormatting = false
-
-hostile.get(preserveFormatting, function (err, lines) {
-  if (err) {
-    console.error(err.message)
-  }
-  lines.forEach(function (line) {
-    console.log(line) // [IP, Host]
-  })
-})
-```
-
-#### get all lines in any file
-
-```js
-// If `preserveFormatting` is true, then include comments, blank lines and other
-// non-host entries in the result
-var preserveFormatting = false
-
-hostile.getFile(file_path, preserveFormatting, function (err, lines) {
-  if (err) {
-    console.error(err.message)
-  }
-  lines.forEach(function (line) {
-    console.log(line) // [IP, Host]
-  })
-})
-```
-
-## contributors
-
-- [Feross Aboukhadijeh](http://feross.org) (author)
-- [Maayan Glikser](https://github.com/morsdyce)
-
-## license
-
-MIT. Copyright (c) [Feross Aboukhadijeh](http://feross.org).
+> Unuse a(n) origin hosts path or an ALIAS_NAME(see `hfm ls`)

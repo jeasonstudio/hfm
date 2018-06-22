@@ -72,7 +72,7 @@ program
 program
   .command('help')
   .description('Print help for hfm')
-  .action(program.outputHelp);
+  .action(() => program.outputHelp());
 
 program
   .parse(process.argv);
