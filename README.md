@@ -1,13 +1,13 @@
-# hostile [![travis][travis-image]][travis-url] [![npm][npm-image]][npm-url] [![downloads][downloads-image]][downloads-url] [![javascript style guide][standard-image]][standard-url]
+# hostile
 
-[travis-image]: https://img.shields.io/travis/feross/hostile/master.svg
-[travis-url]: https://travis-ci.org/feross/hostile
-[npm-image]: https://img.shields.io/npm/v/hostile.svg
-[npm-url]: https://npmjs.org/package/hostile
-[downloads-image]: https://img.shields.io/npm/dm/hostile.svg
-[downloads-url]: https://npmjs.org/package/hostile
-[standard-image]: https://img.shields.io/badge/code_style-standard-brightgreen.svg
-[standard-url]: https://standardjs.com
+[![travis][travis-image]][travis-url] [![npm][npm-image]][npm-url] [![downloads][downloads-image]][downloads-url] [![javascript style guide][standard-image]][standard-url]
+
+[travis-image]: https://img.shields.io/travis/jeasonstudio/hfm/master.svg
+[travis-url]: https://travis-ci.org/jeasonstudio/hfm
+[npm-image]: https://img.shields.io/npm/v/hfm.svg
+[npm-url]: https://npmjs.org/package/hfm
+[downloads-image]: https://img.shields.io/npm/dm/hfm.svg
+[downloads-url]: https://npmjs.org/package/hfm
 
 #### Simple, programmatic `/etc/hosts` manipulation (in node.js)
 

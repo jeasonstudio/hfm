@@ -1,3 +1,11 @@
+sudo: required
 language: node_js
 node_js:
-  - lts/*
+  - "8"
+before_install:
+    - echo "Start Pipe..."
+install:
+    - npm install
+script:
+    - ./bin/cli.js
+    - ./bin/cli.js ls
