@@ -24,11 +24,10 @@
   },
   "homepage": "https://github.com/jeasonstudio/hfm",
   "keywords": [
-    "/etc/hosts",
-    "change hosts",
-    "etc hosts",
+    "hosts",
+    "switchhosts",
     "hostname",
-    "hosts file"
+    "hostfile"
   ],
   "license": "MIT",
   "main": "index.js",
